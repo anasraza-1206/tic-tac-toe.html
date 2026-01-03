@@ -42,6 +42,7 @@ This project includes multiple game modes, AI difficulty levels, sound effects, 
 
 👉 Play the game here:  
 **https://your-username.github.io/tic-tac-toe/**
+https://USERNAME.github.io/REPOSITORY-NAME/
 
 *(Replace `your-username` with your GitHub username)*
 
