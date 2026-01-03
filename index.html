@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tic Tac Toe Ultimate</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+  body {
+    margin: 0;
+    background: #0f172a;
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+
+  .screen {
+    text-align: center;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  button {
+    padding: 10px 18px;
+    margin: 6px;
+    font-size: 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #22c55e;
+    color: black;
+  }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 90px);
+    gap: 10px;
+    justify-content: center;
+    margin: 20px auto;
+  }
+
+  .cell {
+    width: 90px;
+    height: 90px;
+    background: #1e293b;
+    font-size: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  .cell:active {
+    background: #334155;
+  }
+
+  .score {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 10px;
+  }
+</style>
+</head>
+
+<body>
+
+<!-- MENU -->
+<div id="menu" class="screen">
+  <h1>🎮 Tic Tac Toe</h1>
+  <button onclick="startGame('2p')">2 Players</button><br>
+  <button onclick="startGame('easy')">AI Easy</button><br>
+  <button onclick="startGame('medium')">AI Medium</button><br>
+  <button onclick="startGame('hard')">AI Hard</button>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen hidden">
+  <h2 id="status">Player X Turn</h2>
+  <div class="board" id="board"></div>
+
+  <div class="score">
+    <div>X: <span id="scoreX">0</span></div>
+    <div>O: <span id="scoreO">0</span></div>
+    <div>Draw: <span id="scoreD">0</span></div>
+  </div>
+
+  <button onclick="resetBoard()">Restart</button>
+  <button onclick="goMenu()">Menu</button>
+</div>
+
+<script>
+  const clickSound = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3");
+  const winSound = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3");
+  const drawSound = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-neutral-game-notification-951.mp3");
+
+  const boardEl = document.getElementById("board");
+  const statusEl = document.getElementById("status");
+
+  let board, currentPlayer, gameMode, active;
+  let scoreX = 0, scoreO = 0, scoreD = 0;
+
+  const winCombos = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+
+  function startGame(mode) {
+    gameMode = mode;
+    document.getElementById("menu").classList.add("hidden");
+    document.getElementById("game").classList.remove("hidden");
+    resetBoard();
+  }
+
+  function goMenu() {
+    document.getElementById("game").classList.add("hidden");
+    document.getElementById("menu").classList.remove("hidden");
+  }
+
+  function resetBoard() {
+    board = ["","","","","","","","",""];
+    currentPlayer = "X";
+    active = true;
+    statusEl.textContent = "Player X Turn";
+    boardEl.innerHTML = "";
+    board.forEach((_, i) => {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.onclick = () => move(i);
+      boardEl.appendChild(cell);
+    });
+  }
+
+  function move(i) {
+    if (!active || board[i]) return;
+    clickSound.play();
+    board[i] = currentPlayer;
+    boardEl.children[i].textContent = currentPlayer;
+
+    if (checkWin(currentPlayer)) return endGame(currentPlayer);
+    if (board.every(c => c)) return endGame("draw");
+
+    currentPlayer = currentPlayer === "X" ? "O" : "X";
+    statusEl.textContent = `Player ${currentPlayer} Turn`;
+
+    if (gameMode !== "2p" && currentPlayer === "O") {
+      setTimeout(aiMove, 300);
+    }
+  }
+
+  function aiMove() {
+    let moveIndex;
+    if (gameMode === "easy") moveIndex = randomMove();
+    else if (gameMode === "medium") moveIndex = mediumMove();
+    else moveIndex = minimax(board, "O").index;
+    move(moveIndex);
+  }
+
+  function randomMove() {
+    return board.map((v,i)=>v===""?i:null).filter(v=>v!==null)
+      [Math.floor(Math.random()*board.filter(v=>v==="").length)];
+  }
+
+  function mediumMove() {
+    for (let p of ["O","X"]) {
+      for (let i=0;i<9;i++) {
+        if (!board[i]) {
+          board[i]=p;
+          if (checkWin(p)) { board[i]=""; return i; }
+          board[i]="";
+        }
+      }
+    }
+    return randomMove();
+  }
+
+  function minimax(b, player) {
+    const empty = b.map((v,i)=>v===""?i:null).filter(v=>v!==null);
+    if (checkWin("X")) return {score:-10};
+    if (checkWin("O")) return {score:10};
+    if (!empty.length) return {score:0};
+
+    let moves=[];
+    for (let i of empty) {
+      let move={index:i};
+      b[i]=player;
+      move.score = minimax(b, player==="O"?"X":"O").score;
+      b[i]="";
+      moves.push(move);
+    }
+    return player==="O"
+      ? moves.reduce((a,b)=>a.score>b.score?a:b)
+      : moves.reduce((a,b)=>a.score<b.score?a:b);
+  }
+
+  function checkWin(p) {
+    return winCombos.some(c=>c.every(i=>board[i]===p));
+  }
+
+  function endGame(result) {
+    active=false;
+    if (result==="draw") {
+      scoreD++; drawSound.play();
+      statusEl.textContent="Draw!";
+    } else {
+      result==="X"?scoreX++:scoreO++;
+      winSound.play();
+      statusEl.textContent=`${result} Wins!`;
+    }
+    document.getElementById("scoreX").textContent=scoreX;
+    document.getElementById("scoreO").textContent=scoreO;
+    document.getElementById("scoreD").textContent=scoreD;
+  }
+</script>
+</body>
+</html>
